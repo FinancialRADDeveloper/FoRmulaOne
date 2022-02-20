@@ -12,6 +12,9 @@ library(magrittr)
 library(dplyr)
 library(mapview)
 library(knitr)
+library(DT)
+library(ggplot2)
+
 ```
 
 ## F1 Circuits Data Exploration
@@ -44,6 +47,25 @@ knitr::kable(sort(table(circuits$country), decreasing = TRUE), col.names = c("Co
 
 # circuits %>% arrange(desc(country))
 
+# how do i find out how many races have been hosted at each? 
+
+races <- readr::read_csv(file = "./kaggle_f1_data/races.csv")
+
+number_of_races_held <-
+  races %>% dplyr::count(circuitId,
+                         name = "races_held") %>%
+  left_join(dplyr::select(circuits, c("circuitId", "name", "country")),
+            by = "circuitId") %>%
+  dplyr::select(-circuitId) %>%
+  dplyr::relocate("name", "country", "races_held") %>%
+  arrange(desc(races_held))
+
+
+# knitr::kable(number_of_races_held)
+
+rmarkdown::paged_table(number_of_races_held)
+
+DT::datatable(number_of_races_held, rownames = FALSE, colnames = c("Circuit", "Country", "Races Held"))
 
 ```
 
@@ -53,4 +75,79 @@ mapview(circuits, xcol = "lng", ycol = "lat", crs = 4269, grid = FALSE)
 
 ```
 
+## Now lets look at races 
+
+
+```{r}
+
+# races %>% glimpse() 
+# What about how many races per year in a nice bar graph. 
+
+races_per_year <- races %>% dplyr::count(year, name = "num_races")
+DT::datatable(races_per_year, rownames = FALSE, colnames = c("Year", "Races Held"))
+ggplot(races, aes(x=year)) + geom_bar()
+
+# we can see clearly there is an upward trend 
+
+
+
+
+```
+```{r quick look at the constructors}
+
+
+constructors <- readr::read_csv(file = "./kaggle_f1_data/constructors.csv")
+
+constructors %>% glimpse()
+
+# which country has produced the most constructors
+
+constructors_per_country <- constructors %>% 
+  dplyr::count(nationality, name = "num_constructors") %>% 
+  arrange(desc(num_constructors))
+  
+
+hsize <- 2
+
+constructors_per_country <- constructors_per_country %>% 
+  mutate(x = hsize)
+
+ggplot(constructors_per_country, aes(x = hsize, y = num_constructors, fill = nationality)) + 
+  geom_col(color = "black") + 
+  geom_text(aes(label = num_constructors),
+            position = position_stack(vjust = 0.5)) +
+  coord_polar(theta = "y") + 
+  scale_fill_brewer(palette = "GnBu") +
+  xlim(c(0.2, hsize + 0.5)) + 
+  theme(panel.background = element_rect(fill = "white"),
+      panel.grid = element_blank(),
+      axis.title = element_blank(),
+      axis.ticks = element_blank(),
+      axis.text = element_blank())
+
+
+
+```
+
+```{r which constructor has the most wins}
+
+constructors %>% dplyr::glimpse()
+
+
+results <- readr::read_csv(file = "./kaggle_f1_data/results.csv")
+
+results %>% dplyr::glimpse()
+
+
+# lets look at the wins only for now. 
+
+wins <- results %>% dplyr::filter(position == 1)
+
+# we also need to add in the human readable name
+constructor_wins <- wins %>% dplyr::count(constructorId)
+
+
+
+
+```
 
